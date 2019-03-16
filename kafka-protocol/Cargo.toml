@@ -1,0 +1,8 @@
+[package]
+name = "kafka-protocol"
+version = "0.1.0"
+authors = ["Joe Frikker <joe.frikker@shibumi.com>"]
+edition = "2018"
+
+[dependencies]
+bytes = "0.4"

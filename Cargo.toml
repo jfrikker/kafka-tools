@@ -1,0 +1,2 @@
+[workspace]
+members = ["kafka-health", "kafka-protocol"]
