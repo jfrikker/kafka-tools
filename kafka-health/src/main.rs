@@ -1,72 +1,28 @@
 extern crate kafka_protocol;
-extern crate serde;
-extern crate serde_json;
-extern crate zookeeper;
 
-use serde::Deserialize;
-use std::rc::Rc;
-use std::collections::HashMap;
+use kafka_protocol::*;
+use std::io::Result;
 use std::process::exit;
-use zookeeper::{ZooKeeper, ZkResult};
 
 fn main() {
-    let mut conn = kafka_protocol::KafkaConnection::connect("127.0.0.1:9092").unwrap();
-    let metadata_req = kafka_protocol::MetadataRequest {
-        topics: None,
-        allow_auto_topic_creation: false
-    };
-    let metadata = conn.send(&metadata_req).unwrap();
-    println!("{:?}", metadata);
-}
-    /*let zk = connect().unwrap();
+    let mut conn = KafkaConnection::connect("127.0.0.1:9092").unwrap();
+    let metadata = load_metadata(&mut conn).unwrap();
 
-    let mut brokers = zk.get_children("/brokers/ids", false).unwrap();
-    brokers.sort();
-
-    let brokers: Vec<Broker> = brokers.into_iter()
-        .map(|id| {
-            let info = load_broker_info(&id, &zk);
-            Broker {
-                id: id.parse().unwrap(),
-                info
-            }
-        })
-        .collect();
-
-    let mut topics = zk.get_children("/brokers/topics", false).unwrap();
-    topics.sort();
-
-    let partitions: Vec<Partition> = topics.into_iter()
-        .flat_map(|name| {
-            let name = Rc::new(name);
-            let data = load_topic_info(&name, &zk);
-            data.partitions.into_iter()
-                .map(move |(part, replicas)| (name.clone(), part.parse().unwrap(), replicas))
-        })
-        .map(|(name, part, replicas)| {
-            let data = load_partition_info(&name, part, &zk);
-            Partition {
-                topic: name,
-                id: part,
-                replicas,
-                isr: data.isr
-            }
-        })
-        .collect();
-        
     let mut brokers_up_to_date = true;
 
-    for broker in brokers {
+    for broker in metadata.brokers.iter() {
         let mut broker_up_to_date = true;
-        println!("Broker {}:{}", broker.info.host, broker.info.port);
-        for partition in partitions.iter() {
-            if !partition.replicas.contains(&broker.id) {
-                continue;
-            }
+        println!("Broker {}:{}", broker.host, broker.port);
+        for topic in metadata.topic_metadata.iter() {
+            for partition in topic.partition_metadata.iter() {
+                if !partition.replicas.contains(&broker.node_id) {
+                    continue;
+                }
 
-            if !partition.isr.contains(&broker.id) {
-                println!("  WARN: Catching up on topic {} partition {}", partition.topic, partition.id);
-                broker_up_to_date = false;
+                if !partition.isr.contains(&broker.node_id) {
+                    println!("  WARN: Catching up on topic {} partition {}", topic.topic, partition.partition);
+                    broker_up_to_date = false;
+                }
             }
         }
 
@@ -80,14 +36,16 @@ fn main() {
     let mut partitions_have_1_replica = true;
     let mut partitions_have_2_replicas = true;
 
-    for partition in partitions {
-        if partition.isr.len() < 1 {
-            println!("ERR: topic {} partition {} has no active replicas", partition.topic, partition.id);
-            partitions_have_1_replica = false;
-        }
-        if partition.isr.len() < 2 {
-            println!("WARN: topic {} partition {} is under-replicated", partition.topic, partition.id);
-            partitions_have_2_replicas = false;
+    for topic in metadata.topic_metadata.iter() {
+        for partition in topic.partition_metadata.iter() {
+            if partition.isr.len() < 1 {
+                println!("ERR: topic {} partition {} has no active replicas", topic.topic, partition.partition);
+                partitions_have_1_replica = false;
+            }
+            if partition.isr.len() < 2 {
+                println!("WARN: topic {} partition {} is under-replicated", topic.topic, partition.partition);
+                partitions_have_2_replicas = false;
+            }
         }
     }
 
@@ -106,62 +64,10 @@ fn main() {
     }
 }
 
-fn load_broker_info(id: &str, zk: &ZooKeeper) -> BrokerInfo {
-    let path = format!("/brokers/ids/{}", id);
-    let (bytes, _) = zk.get_data(&path, false).unwrap();
-    serde_json::from_slice(&bytes).unwrap()
+fn load_metadata(conn: &mut KafkaConnection) -> Result<MetadataResponse> {
+    let metadata_req = kafka_protocol::MetadataRequest {
+        topics: None,
+        allow_auto_topic_creation: false
+    };
+    conn.send(&metadata_req)
 }
-
-fn load_topic_info(name: &str, zk: &ZooKeeper) -> TopicInfo {
-    let path = format!("/brokers/topics/{}", name);
-    let (bytes, _) = zk.get_data(&path, false).unwrap();
-    serde_json::from_slice(&bytes).unwrap()
-}
-
-fn load_partition_info(topic_name: &str, partition: u8, zk: &ZooKeeper) -> PartitionInfo {
-    let path = format!("/brokers/topics/{}/partitions/{}/state", topic_name, partition);
-    let (bytes, _) = zk.get_data(&path, false).unwrap();
-    serde_json::from_slice(&bytes).unwrap()
-}
-
-fn connect() -> ZkResult<ZooKeeper> {
-    ZooKeeper::connect("localhost:2181", std::time::Duration::from_secs(30), Watcher)
-}
-
-struct Watcher;
-
-impl zookeeper::Watcher for Watcher {
-    fn handle(&self, _: zookeeper::WatchedEvent) {
-        // ignore
-    }
-}
-
-#[derive(Debug)]
-struct Broker {
-    id: u8,
-    info: BrokerInfo
-}
-
-#[derive(Debug,Deserialize)]
-struct BrokerInfo {
-    host: String,
-    port: u16
-}
-
-#[derive(Debug)]
-struct Partition {
-    topic: Rc<String>,
-    id: u8,
-    replicas: Vec<u8>,
-    isr: Vec<u8>
-}
-
-#[derive(Debug,Deserialize)]
-struct TopicInfo {
-    partitions: HashMap<String, Vec<u8>>
-}
-
-#[derive(Debug,Deserialize)]
-struct PartitionInfo {
-    isr: Vec<u8>
-}*/
