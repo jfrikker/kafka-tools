@@ -1,3 +1,4 @@
+extern crate kafka_protocol;
 extern crate serde;
 extern crate serde_json;
 extern crate zookeeper;
@@ -9,7 +10,15 @@ use std::process::exit;
 use zookeeper::{ZooKeeper, ZkResult};
 
 fn main() {
-    let zk = connect().unwrap();
+    let mut conn = kafka_protocol::KafkaConnection::connect("127.0.0.1:9092").unwrap();
+    let metadata_req = kafka_protocol::MetadataRequest {
+        topics: None,
+        allow_auto_topic_creation: false
+    };
+    let metadata = conn.send(&metadata_req).unwrap();
+    println!("{:?}", metadata);
+}
+    /*let zk = connect().unwrap();
 
     let mut brokers = zk.get_children("/brokers/ids", false).unwrap();
     brokers.sort();
@@ -155,4 +164,4 @@ struct TopicInfo {
 #[derive(Debug,Deserialize)]
 struct PartitionInfo {
     isr: Vec<u8>
-}
+}*/
