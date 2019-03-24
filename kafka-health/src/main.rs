@@ -1,12 +1,14 @@
 extern crate kafka_protocol;
 
 use kafka_protocol::*;
+use std::env::args;
 use std::io::Result;
 use std::process::exit;
 
-fn main() {
-    let mut conn = KafkaConnection::connect("127.0.0.1:9092").unwrap();
-    let metadata = load_metadata(&mut conn).unwrap();
+fn main() -> Result<()> {
+    let addr = args().nth(1).unwrap_or("localhost:9092".into());
+    let mut conn = KafkaConnection::connect(addr)?;
+    let metadata = load_metadata(&mut conn)?;
 
     let mut brokers_up_to_date = true;
 
