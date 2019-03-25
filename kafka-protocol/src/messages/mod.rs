@@ -33,4 +33,5 @@ pub trait PerTopicResponse {
 
 pub trait PerPartitionResponse {
     fn partition_id(&self) -> i32;
+    fn error_code(&self) -> i16;
 }

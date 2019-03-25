@@ -151,4 +151,8 @@ impl PerPartitionResponse for PartitionMetadata {
     fn partition_id(&self) -> i32 {
         self.partition
     }
+
+    fn error_code(&self) -> i16 {
+        self.error_code
+    }
 }

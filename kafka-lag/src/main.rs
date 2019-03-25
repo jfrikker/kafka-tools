@@ -13,6 +13,8 @@ fn main() -> Result<()> {
     let groups = list_groups(&mut conn)?;
     let offsets = list_offsets(&mut conn, &metadata)?;
 
+    println!("{:?}", offsets);
+
     for group in groups.groups.iter() {
         let group_offsets = list_group_offsets(&mut conn, group.name.clone(), &metadata)?;
 

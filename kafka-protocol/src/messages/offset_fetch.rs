@@ -1,3 +1,4 @@
+use crate::messages::*;
 use crate::request::*;
 
 #[derive(Debug, Clone)]
@@ -72,6 +73,14 @@ impl KafkaDeserializable for Response {
     }
 }
 
+impl MultiTopicResponse for Response {
+    type Topic = TopicResponse;
+
+    fn topics(&self) -> &[Self::Topic] {
+        &self.responses
+    }
+}
+
 impl KafkaDeserializable for TopicResponse {
     fn deserialize<R: Read>(stream: &mut R) -> Result<Self> {
         let topic = String::deserialize(stream)?;
@@ -80,6 +89,18 @@ impl KafkaDeserializable for TopicResponse {
             topic,
             partition_responses
         })
+    }
+}
+
+impl PerTopicResponse for TopicResponse {
+    type Partition = PartitionResponse;
+
+    fn topic(&self) -> &str {
+        &self.topic
+    }
+
+    fn partitions(&self) -> &[Self::Partition] {
+        &self.partition_responses
     }
 }
 
@@ -95,5 +116,15 @@ impl KafkaDeserializable for PartitionResponse {
             metadata,
             error_code
         })
+    }
+}
+
+impl PerPartitionResponse for PartitionResponse {
+    fn partition_id(&self) -> i32 {
+        self.partition
+    }
+
+    fn error_code(&self) -> i16 {
+        self.error_code
     }
 }
