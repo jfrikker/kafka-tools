@@ -16,6 +16,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "kafka-lag"
+version = "0.1.0"
+dependencies = [
+ "kafka-protocol 0.1.0",
+]
+
+[[package]]
 name = "kafka-protocol"
 version = "0.1.0"
 dependencies = [

@@ -1,2 +1,2 @@
 [workspace]
-members = ["kafka-health", "kafka-protocol"]
+members = ["kafka-health", "kafka-lag", "kafka-protocol"]

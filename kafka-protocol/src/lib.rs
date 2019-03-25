@@ -30,7 +30,7 @@ impl KafkaConnection {
     fn send_req <R: KafkaRequest>(&mut self, request: &R) -> Result<()> {
         self.outgoing.set_position(0);
         self.outgoing.write_i16::<BigEndian>(R::api_key())?;
-        self.outgoing.write_i16::<BigEndian>(6)?;
+        self.outgoing.write_i16::<BigEndian>(R::api_version())?;
         self.outgoing.write_i32::<BigEndian>(0)?;
         self.outgoing.write_i16::<BigEndian>(-1)?;
         request.serialize(&mut self.outgoing)?;
@@ -75,6 +75,12 @@ impl KafkaDeserializable for bool {
     }
 }
 
+impl KafkaSerializable for i8 {
+    fn serialize<W: Write>(&self, out: &mut W) -> Result<()> {
+        out.write_i8(*self)
+    }
+}
+
 impl KafkaSerializable for i16 {
     fn serialize<W: Write>(&self, out: &mut W) -> Result<()> {
         out.write_i16::<BigEndian>(*self)
@@ -96,6 +102,18 @@ impl KafkaSerializable for i32 {
 impl KafkaDeserializable for i32 {
     fn deserialize<R: Read>(stream: &mut R) -> Result<Self> {
         stream.read_i32::<BigEndian>()
+    }
+}
+
+impl KafkaSerializable for i64 {
+    fn serialize<W: Write>(&self, out: &mut W) -> Result<()> {
+        out.write_i64::<BigEndian>(*self)
+    }
+}
+
+impl KafkaDeserializable for i64 {
+    fn deserialize<R: Read>(stream: &mut R) -> Result<Self> {
+        stream.read_i64::<BigEndian>()
     }
 }
 
@@ -161,6 +179,7 @@ impl <T: KafkaSerializable> KafkaSerializable for Option<Vec<T>> {
 pub trait KafkaRequest: KafkaSerializable {
     type Response: KafkaDeserializable;
     fn api_key() -> i16;
+    fn api_version() -> i16;
 }
 
 #[derive(Debug, Clone)]
@@ -173,6 +192,18 @@ impl KafkaSerializable for MetadataRequest {
     fn serialize<W: Write>(&self, out: &mut W)-> Result<()> {
         self.topics.serialize(out)?;
         self.allow_auto_topic_creation.serialize(out)
+    }
+}
+
+impl KafkaRequest for MetadataRequest {
+    type Response = MetadataResponse;
+
+    fn api_key() -> i16 {
+        3
+    }
+
+    fn api_version() -> i16 {
+        6
     }
 }
 
@@ -277,10 +308,170 @@ impl KafkaDeserializable for PartitionMetadata {
     }
 }
 
-impl KafkaRequest for MetadataRequest {
-    type Response = MetadataResponse;
+#[derive(Debug, Clone)]
+pub struct ListGroupsRequest { }
+
+impl KafkaSerializable for ListGroupsRequest {
+    fn serialize<W: Write>(&self, _: &mut W)-> Result<()> {
+        Ok(())
+    }
+}
+
+impl KafkaRequest for ListGroupsRequest {
+    type Response = ListGroupsResponse;
 
     fn api_key() -> i16 {
+        16
+    }
+
+    fn api_version() -> i16 {
+        2
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ListGroupsResponse {
+    pub throttle_time_ms: i32,
+    pub error_code: i16,
+    pub groups: Vec<Group>
+}
+
+impl KafkaDeserializable for ListGroupsResponse {
+    fn deserialize<R: Read>(stream: &mut R) -> Result<Self> {
+        let throttle_time_ms = i32::deserialize(stream)?;
+        let error_code = i16::deserialize(stream)?;
+        let groups = Vec::<Group>::deserialize(stream)?;
+        Ok(ListGroupsResponse {
+            throttle_time_ms,
+            error_code,
+            groups
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Group {
+    pub name: String,
+    pub protocol_type: String
+}
+
+impl KafkaDeserializable for Group {
+    fn deserialize<R: Read>(stream: &mut R) -> Result<Self> {
+        let name = String::deserialize(stream)?;
+        let protocol_type = String::deserialize(stream)?;
+        Ok(Group {
+            name,
+            protocol_type
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ListOffsetsRequest {
+    pub replica_id: i32,
+    pub isolation_level: i8,
+    pub topics: Vec<TopicRequest>
+}
+
+#[derive(Debug, Clone)]
+pub struct TopicRequest {
+    pub topic: String,
+    pub partitions: Vec<PartitionRequest>
+}
+
+#[derive(Debug, Clone)]
+pub struct PartitionRequest {
+    pub partition: i32,
+    pub timestamp: i64
+}
+
+impl KafkaSerializable for ListOffsetsRequest {
+    fn serialize<W: Write>(&self, out: &mut W)-> Result<()> {
+        self.replica_id.serialize(out)?;
+        self.isolation_level.serialize(out)?;
+        self.topics.serialize(out)
+    }
+}
+
+impl KafkaRequest for ListOffsetsRequest {
+    type Response = ListOffsetsResponse;
+
+    fn api_key() -> i16 {
+        2
+    }
+
+    fn api_version() -> i16 {
         3
+    }
+}
+
+impl KafkaSerializable for TopicRequest {
+    fn serialize<W: Write>(&self, out: &mut W)-> Result<()> {
+        self.topic.serialize(out)?;
+        self.partitions.serialize(out)
+    }
+}
+
+impl KafkaSerializable for PartitionRequest {
+    fn serialize<W: Write>(&self, out: &mut W)-> Result<()> {
+        self.partition.serialize(out)?;
+        self.timestamp.serialize(out)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ListOffsetsResponse {
+    pub throttle_time_ms: i32,
+    pub responses: Vec<TopicResponse>
+}
+
+#[derive(Debug, Clone)]
+pub struct TopicResponse {
+    pub topic: String,
+    pub partition_responses: Vec<PartitionResponse>
+}
+
+#[derive(Debug, Clone)]
+pub struct PartitionResponse {
+    pub partition: i32,
+    pub error_code: i16,
+    pub timestamp: i64,
+    pub offset: i64
+}
+
+impl KafkaDeserializable for ListOffsetsResponse {
+    fn deserialize<R: Read>(stream: &mut R) -> Result<Self> {
+        let throttle_time_ms = i32::deserialize(stream)?;
+        let responses = Vec::<TopicResponse>::deserialize(stream)?;
+        Ok(ListOffsetsResponse {
+            throttle_time_ms,
+            responses
+        })
+    }
+}
+
+impl KafkaDeserializable for TopicResponse {
+    fn deserialize<R: Read>(stream: &mut R) -> Result<Self> {
+        let topic = String::deserialize(stream)?;
+        let partition_responses = Vec::<PartitionResponse>::deserialize(stream)?;
+        Ok(TopicResponse {
+            topic,
+            partition_responses
+        })
+    }
+}
+
+impl KafkaDeserializable for PartitionResponse {
+    fn deserialize<R: Read>(stream: &mut R) -> Result<Self> {
+        let partition = i32::deserialize(stream)?;
+        let error_code = i16::deserialize(stream)?;
+        let timestamp = i64::deserialize(stream)?;
+        let offset = i64::deserialize(stream)?;
+        Ok(PartitionResponse {
+            partition,
+            error_code,
+            timestamp,
+            offset
+        })
     }
 }
