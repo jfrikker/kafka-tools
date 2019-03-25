@@ -1,4 +1,5 @@
 use crate::request::*;
+use crate::messages::*;
 
 #[derive(Debug, Clone)]
 pub struct Request {
@@ -77,6 +78,14 @@ impl KafkaDeserializable for Response {
     }
 }
 
+impl MultiTopicResponse for Response {
+    type Topic = TopicMetadata;
+
+    fn topics(&self) -> &[Self::Topic] {
+        &self.topic_metadata
+    }
+}
+
 impl KafkaDeserializable for Broker {
     fn deserialize<R: Read>(stream: &mut R) -> Result<Self> {
         let node_id = i32::deserialize(stream)?;
@@ -107,6 +116,18 @@ impl KafkaDeserializable for TopicMetadata {
     }
 }
 
+impl PerTopicResponse for TopicMetadata {
+    type Partition = PartitionMetadata;
+
+    fn topic(&self) -> &str {
+        &self.topic
+    }
+
+    fn partitions(&self) -> &[Self::Partition] {
+        &self.partition_metadata
+    }
+}
+
 impl KafkaDeserializable for PartitionMetadata {
     fn deserialize<R: Read>(stream: &mut R) -> Result<Self> {
         let error_code = i16::deserialize(stream)?;
@@ -123,5 +144,11 @@ impl KafkaDeserializable for PartitionMetadata {
             isr,
             offline_replicas
         })
+    }
+}
+
+impl PerPartitionResponse for PartitionMetadata {
+    fn partition_id(&self) -> i32 {
+        self.partition
     }
 }
