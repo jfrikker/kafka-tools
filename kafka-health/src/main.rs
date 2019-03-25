@@ -1,6 +1,7 @@
 extern crate kafka_protocol;
 
-use kafka_protocol::*;
+use kafka_protocol::KafkaConnection;
+use kafka_protocol::messages::metadata;
 use std::env::args;
 use std::io::Result;
 use std::process::exit;
@@ -66,8 +67,8 @@ fn main() -> Result<()> {
     }
 }
 
-fn load_metadata(conn: &mut KafkaConnection) -> Result<MetadataResponse> {
-    let metadata_req = kafka_protocol::MetadataRequest {
+fn load_metadata(conn: &mut KafkaConnection) -> Result<metadata::Response> {
+    let metadata_req = metadata::Request {
         topics: None,
         allow_auto_topic_creation: false
     };
