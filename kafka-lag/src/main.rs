@@ -1,29 +1,58 @@
 extern crate kafka_protocol;
 
-use kafka_protocol::messages::MultiTopicResponse;
+use kafka_protocol::messages::{MultiTopicResponse, PerPartitionResponse};
 use kafka_protocol::KafkaConnection;
 use kafka_protocol::messages::{list_groups, list_offsets, metadata, offset_fetch};
 use std::env::args;
 use std::io::Result;
 
 fn main() -> Result<()> {
-    let addr = args().nth(1).unwrap_or("localhost:9092".into());
-    let mut conn = KafkaConnection::connect(addr)?;
-    let metadata = load_metadata(&mut conn)?;
-    let groups = list_groups(&mut conn)?;
-    let offsets = list_offsets(&mut conn, &metadata)?;
+    let mut addrs: Vec<String> = args().skip(1).collect();
+    if addrs.is_empty() {
+        addrs = vec!("localhost:9092".into());
+    }
 
-    println!("{:?}", offsets);
+    let conns: Result<Vec<KafkaConnection>> = addrs.into_iter()
+        .map(|a| KafkaConnection::connect(a))
+        .collect();
+    let mut conns = conns?;
 
-    for group in groups.groups.iter() {
-        let group_offsets = list_group_offsets(&mut conn, group.name.clone(), &metadata)?;
+    let metadata = load_metadata(conns.get_mut(0).unwrap())?;
+
+    let groups: Result<Vec<list_groups::Response>> = conns.iter_mut()
+        .map(|c| list_groups(c))
+        .collect();
+    let groups = groups?.into_iter()
+        .filter(|r| !r.groups.is_empty())
+        .next()
+        .map(|g| g.groups)
+        .unwrap_or(Vec::new());
+    
+    let offsets: Result<Vec<list_offsets::Response>> = conns.iter_mut()
+        .map(|c| list_offsets(c, &metadata))
+        .collect();
+    let offsets = offsets?;
+
+    for group in groups {
+        let group_offsets: Result<Vec<offset_fetch::Response>> = conns.iter_mut()
+            .map(|c| list_group_offsets(c, group.name.clone(), &metadata))
+            .collect();
+        let group_offsets = group_offsets?.into_iter()
+            .filter(|r| !r.responses.is_empty())
+            .next()
+            .unwrap();
 
         for topic in group_offsets.responses.iter() {
             let mut watching = false;
             let mut lag: i64 = 0;
             for partition in topic.partition_responses.iter() {
                 let group_offset = partition.offset;
-                let max_offset = offsets.partition(&topic.topic, partition.partition).map(|p| p.offset).unwrap_or(0);
+                let max_offset = offsets.iter()
+                    .map(|o| o.partition(&topic.topic, partition.partition).unwrap())
+                    .filter(|p| p.error_code() == 0)
+                    .map(|p| p.offset)
+                    .next()
+                    .unwrap();
 
                 if max_offset > 0 {
                     lag += std::cmp::max(max_offset - group_offset, 0);
