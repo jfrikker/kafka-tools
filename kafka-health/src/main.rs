@@ -45,7 +45,7 @@ fn main() -> Result<()> {
                 println!("ERR: topic {} partition {} has no active replicas", topic.topic, partition.partition);
                 partitions_have_1_replica = false;
             }
-            if partition.isr.len() < 2 {
+            if partition.isr.len() < partition.replicas.len() / 2 {
                 println!("WARN: topic {} partition {} is under-replicated", topic.topic, partition.partition);
                 partitions_have_2_replicas = false;
             }
