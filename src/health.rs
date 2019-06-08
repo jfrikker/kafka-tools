@@ -1,15 +1,10 @@
-extern crate kafka_protocol;
-
-use kafka_protocol::KafkaConnection;
-use kafka_protocol::messages::metadata;
-use std::env::args;
+use super::protocol::KafkaCluster;
+use super::protocol::messages::metadata;
 use std::io::Result;
 use std::process::exit;
 
-fn main() -> Result<()> {
-    let addr = args().nth(1).unwrap_or("localhost:9092".into());
-    let mut conn = KafkaConnection::connect(addr)?;
-    let metadata = load_metadata(&mut conn)?;
+pub fn cluster_health(cluster: &mut KafkaCluster) -> Result<()> {
+    let metadata = load_metadata(cluster)?;
 
     let mut brokers_up_to_date = true;
 
@@ -54,23 +49,22 @@ fn main() -> Result<()> {
 
     if !partitions_have_1_replica {
         println!("ERR: Some partitions have no active replica!");
-        exit(1);
+        exit(2);
     } else if !partitions_have_2_replicas {
         println!("ERR: Some partitions are under-replicated");
-        exit(1);
+        exit(2);
     } else if !brokers_up_to_date {
         println!("WARN: Some brokers are still getting in sync");
-        exit(2);
+        exit(3);
     } else {
         println!("Cluster is healthy");
         exit(0);
     }
 }
 
-fn load_metadata(conn: &mut KafkaConnection) -> Result<metadata::Response> {
-    let metadata_req = metadata::Request {
+fn load_metadata(conn: &mut KafkaCluster) -> Result<metadata::Response> {
+    conn.send_any(&metadata::Request {
         topics: None,
         allow_auto_topic_creation: false
-    };
-    conn.send(&metadata_req)
+    })
 }

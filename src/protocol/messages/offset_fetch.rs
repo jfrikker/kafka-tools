@@ -1,29 +1,21 @@
-use crate::messages::*;
-use crate::request::*;
+use super::*;
+use super::super::request::*;
 
 #[derive(Debug, Clone)]
 pub struct Request {
-    pub replica_id: i32,
-    pub isolation_level: i8,
+    pub group_id: String,
     pub topics: Vec<TopicRequest>
 }
 
 #[derive(Debug, Clone)]
 pub struct TopicRequest {
     pub topic: String,
-    pub partitions: Vec<PartitionRequest>
-}
-
-#[derive(Debug, Clone)]
-pub struct PartitionRequest {
-    pub partition: i32,
-    pub timestamp: i64
+    pub partitions: Vec<i32>
 }
 
 impl KafkaSerializable for Request {
     fn serialize<W: Write>(&self, out: &mut W)-> Result<()> {
-        self.replica_id.serialize(out)?;
-        self.isolation_level.serialize(out)?;
+        self.group_id.serialize(out)?;
         self.topics.serialize(out)
     }
 }
@@ -32,11 +24,11 @@ impl KafkaRequest for Request {
     type Response = Response;
 
     fn api_key() -> i16 {
-        2
+        9
     }
 
     fn api_version() -> i16 {
-        3
+        4
     }
 }
 
@@ -47,17 +39,11 @@ impl KafkaSerializable for TopicRequest {
     }
 }
 
-impl KafkaSerializable for PartitionRequest {
-    fn serialize<W: Write>(&self, out: &mut W)-> Result<()> {
-        self.partition.serialize(out)?;
-        self.timestamp.serialize(out)
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Response {
     pub throttle_time_ms: i32,
-    pub responses: Vec<TopicResponse>
+    pub responses: Vec<TopicResponse>,
+    error_code: i16
 }
 
 #[derive(Debug, Clone)]
@@ -69,18 +55,20 @@ pub struct TopicResponse {
 #[derive(Debug, Clone)]
 pub struct PartitionResponse {
     pub partition: i32,
-    pub error_code: i16,
-    pub timestamp: i64,
-    pub offset: i64
+    pub offset: i64,
+    pub metadata: Option<String>,
+    pub error_code: i16
 }
 
 impl KafkaDeserializable for Response {
     fn deserialize<R: Read>(stream: &mut R) -> Result<Self> {
         let throttle_time_ms = i32::deserialize(stream)?;
         let responses = Vec::<TopicResponse>::deserialize(stream)?;
+        let error_code = i16::deserialize(stream)?;
         Ok(Response {
             throttle_time_ms,
-            responses
+            responses,
+            error_code
         })
     }
 }
@@ -119,14 +107,14 @@ impl PerTopicResponse for TopicResponse {
 impl KafkaDeserializable for PartitionResponse {
     fn deserialize<R: Read>(stream: &mut R) -> Result<Self> {
         let partition = i32::deserialize(stream)?;
-        let error_code = i16::deserialize(stream)?;
-        let timestamp = i64::deserialize(stream)?;
         let offset = i64::deserialize(stream)?;
+        let metadata = Option::<String>::deserialize(stream)?;
+        let error_code = i16::deserialize(stream)?;
         Ok(PartitionResponse {
             partition,
-            error_code,
-            timestamp,
-            offset
+            offset,
+            metadata,
+            error_code
         })
     }
 }

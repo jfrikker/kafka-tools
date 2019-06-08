@@ -1,8 +1,0 @@
-[package]
-name = "kafka-lag"
-version = "0.1.0"
-authors = ["Joe Frikker <joe.frikker@shibumi.com>"]
-edition = "2018"
-
-[dependencies]
-kafka-protocol = {path = "../kafka-protocol" }

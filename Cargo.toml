@@ -1,2 +1,10 @@
-[workspace]
-members = ["kafka-health", "kafka-lag", "kafka-protocol"]
+[package]
+name = "kafka-tools"
+version = "0.1.0"
+authors = ["Joe Frikker <joe.frikker@shibumi.com>"]
+edition = "2018"
+
+[dependencies]
+byteorder = "1.3.1"
+bufstream = "0.1"
+clap = "2.33"
