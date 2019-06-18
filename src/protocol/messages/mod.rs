@@ -9,7 +9,7 @@ pub trait MultiTopicResponse {
     fn topics(&self) -> &[Self::Topic];
 
     fn topic(&self, name: &str) -> Option<&Self::Topic> {
-        return self.topics().iter()
+        self.topics().iter()
             .find(|p| p.topic() == name)
     }
 
@@ -26,7 +26,7 @@ pub trait PerTopicResponse {
     fn partitions(&self) -> &[Self::Partition];
 
     fn partition(&self, id: i32) -> Option<&Self::Partition> {
-        return self.partitions().iter()
+        self.partitions().iter()
             .find(|p| p.partition_id() == id)
     }
 }

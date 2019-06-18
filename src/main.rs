@@ -43,11 +43,9 @@ fn main() -> Result<()> {
         println!("WARN: Unable to connect to all brokers");
     }
 
-    if let Some(_) = matches.subcommand_matches("health") {
+    if matches.subcommand_matches("health").is_some() {
         health::cluster_health(&mut cluster)?;
-    }
-
-    if let Some(_) = matches.subcommand_matches("lag") {
+    } else if matches.subcommand_matches("lag").is_some() {
         lag::list_lags(&mut cluster)?;
     }
 

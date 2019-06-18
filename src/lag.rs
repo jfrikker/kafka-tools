@@ -7,10 +7,9 @@ pub fn list_lags(cluster: &mut KafkaCluster) -> Result<()> {
     let metadata = load_metadata(cluster)?;
 
     let groups = cluster.send_all(&list_groups::Request { })?.into_iter()
-        .filter(|r| !r.groups.is_empty())
-        .next()
+        .find(|r| !r.groups.is_empty())
         .map(|g| g.groups)
-        .unwrap_or(Vec::new());
+        .unwrap_or_default();
     
     let offsets: Result<Vec<list_offsets::Response>> = cluster.connections()
         .map(|c| list_offsets(c, &metadata))
@@ -31,8 +30,7 @@ pub fn list_lags(cluster: &mut KafkaCluster) -> Result<()> {
             topics: topics.clone()
         });
         let group_offsets = group_offsets?.into_iter()
-            .filter(|r| !r.responses.is_empty())
-            .next()
+            .find(|r| !r.responses.is_empty())
             .unwrap();
 
         for topic in group_offsets.responses.iter() {

@@ -55,8 +55,7 @@ impl KafkaConnection {
 }
 
 pub struct KafkaCluster {
-    connections: HashMap<(String, i32), Result<KafkaConnection>>,
-    cached_metadata: metadata::Response
+    connections: HashMap<(String, i32), Result<KafkaConnection>>
 }
 
 impl KafkaCluster {
@@ -67,13 +66,8 @@ impl KafkaCluster {
             .collect();
 
         Ok(KafkaCluster {
-            connections,
-            cached_metadata: metadata
+            connections
         })
-    }
-
-    pub fn cached_metadata(&self) -> &metadata::Response {
-        &self.cached_metadata
     }
 
     pub fn is_completely_connected(&self) -> bool {

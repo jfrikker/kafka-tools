@@ -36,7 +36,7 @@ pub fn cluster_health(cluster: &mut KafkaCluster) -> Result<()> {
 
     for topic in metadata.topic_metadata.iter() {
         for partition in topic.partition_metadata.iter() {
-            if partition.isr.len() < 1 {
+            if partition.isr.is_empty() {
                 println!("ERR: topic {} partition {} has no active replicas", topic.topic, partition.partition);
                 partitions_have_1_replica = false;
             }
