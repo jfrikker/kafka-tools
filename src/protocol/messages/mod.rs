@@ -12,7 +12,7 @@ pub trait MultiTopicResponse {
         self.topics().iter()
             .find(|p| p.topic() == name)
     }
-
+    
     fn partition(&self, topic_name: &str, id: i32) -> Option<&<Self::Topic as PerTopicResponse>::Partition> {
         self.topic(topic_name)
             .and_then(|topic| topic.partition(id))

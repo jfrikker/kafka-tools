@@ -34,7 +34,7 @@ fn main() -> Result<()> {
     let mut cluster = match KafkaCluster::connect(bootstrap) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("Error connecting to cluser: {}", e.description());
+            eprintln!("Error connecting to cluster: {}", e);
             exit(1);
         }
     };
