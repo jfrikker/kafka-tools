@@ -1,5 +1,4 @@
 use clap::*;
-use std::error::Error;
 use std::io::Result;
 use std::process::exit;
 
