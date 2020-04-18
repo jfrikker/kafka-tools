@@ -12,7 +12,7 @@ futures = "0.3"
 
 [dependencies.tokio]
 version = "0.2"
-features = ["tcp", "rt-threaded", "macros", "io-util", "dns"]
+features = ["tcp", "rt-threaded", "macros", "io-util", "dns", "sync"]
 
 [dependencies.serde]
 version = "1.0"

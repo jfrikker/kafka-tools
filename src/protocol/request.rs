@@ -130,8 +130,8 @@ impl <T: KafkaSerializable> KafkaSerializable for Option<Vec<T>> {
     }
 }
 
-pub trait KafkaRequest: KafkaSerializable + Debug {
-    type Response: KafkaDeserializable;
+pub trait KafkaRequest: KafkaSerializable + Debug + Send {
+    type Response: KafkaDeserializable + Send + 'static;
     fn api_key() -> i16;
     fn api_version() -> i16;
 }
