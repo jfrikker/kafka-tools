@@ -1,0 +1,45 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'kafka-tools'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=kafka-tools",
+                    "--package=kafka-tools"
+                ],
+                "filter": {
+                    "name": "kafka-tools",
+                    "kind": "bin"
+                }
+            },
+            "args": ["-s", "localhost:9092", "lag"],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'kafka-tools'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=kafka-tools",
+                    "--package=kafka-tools"
+                ],
+                "filter": {
+                    "name": "kafka-tools",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

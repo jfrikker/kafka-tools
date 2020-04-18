@@ -1,11 +1,12 @@
 pub use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use std::fmt::Debug;
 pub use std::io::{Read, Result, Write};
 
 pub trait KafkaSerializable {
     fn serialize<W: Write>(&self, out: &mut W)-> Result<()>;
 }
 
-pub trait KafkaDeserializable: Sized {
+pub trait KafkaDeserializable: Sized + Debug {
     fn deserialize<R: Read>(stream: &mut R) -> Result<Self>;
 }
 
@@ -129,7 +130,7 @@ impl <T: KafkaSerializable> KafkaSerializable for Option<Vec<T>> {
     }
 }
 
-pub trait KafkaRequest: KafkaSerializable {
+pub trait KafkaRequest: KafkaSerializable + Debug {
     type Response: KafkaDeserializable;
     fn api_key() -> i16;
     fn api_version() -> i16;

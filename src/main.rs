@@ -8,7 +8,8 @@ mod protocol;
 
 use protocol::KafkaCluster;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let matches = App::new("kafka-tools")
         .version("1.0")
         .author("Joe Frikker <jfrikker@gmail.com>")
@@ -30,7 +31,7 @@ fn main() -> Result<()> {
         .get_matches();
 
     let bootstrap = matches.values_of("server").unwrap();
-    let mut cluster = match KafkaCluster::connect(bootstrap) {
+    let mut cluster = match KafkaCluster::connect(bootstrap).await {
         Ok(c) => c,
         Err(e) => {
             eprintln!("Error connecting to cluster: {}", e);
@@ -43,9 +44,9 @@ fn main() -> Result<()> {
     }
 
     if matches.subcommand_matches("health").is_some() {
-        health::cluster_health(&mut cluster)?;
+        health::cluster_health(&mut cluster).await?;
     } else if matches.subcommand_matches("lag").is_some() {
-        lag::list_lags(&mut cluster)?;
+        lag::list_lags(&mut cluster).await?;
     }
 
     Ok(())

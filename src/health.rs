@@ -3,8 +3,8 @@ use super::protocol::messages::metadata;
 use std::io::Result;
 use std::process::exit;
 
-pub fn cluster_health(cluster: &mut KafkaCluster) -> Result<()> {
-    let metadata = load_metadata(cluster)?;
+pub async fn cluster_health(cluster: &mut KafkaCluster) -> Result<()> {
+    let metadata = load_metadata(cluster).await?;
 
     let mut brokers_up_to_date = true;
 
@@ -62,9 +62,9 @@ pub fn cluster_health(cluster: &mut KafkaCluster) -> Result<()> {
     }
 }
 
-fn load_metadata(conn: &mut KafkaCluster) -> Result<metadata::Response> {
+async fn load_metadata(conn: &mut KafkaCluster) -> Result<metadata::Response> {
     conn.send_any(&metadata::Request {
         topics: None,
         allow_auto_topic_creation: false
-    })
+    }).await
 }
