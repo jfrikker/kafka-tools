@@ -7,7 +7,6 @@ use std::io::Result;
 
 pub async fn list_lags(cluster: &KafkaCluster) -> Result<()> {
     let (metadata, groups) = try_join!(load_metadata(cluster), load_groups(cluster))?;
-    let offsets = load_offsets(cluster, &metadata).await?;
 
     let topics: Vec<offset_fetch::TopicRequest> = metadata.topic_metadata.iter().map(|topic| {
         let partitions = topic.partition_metadata.iter().map(|partition| partition.partition).collect();
@@ -17,12 +16,10 @@ pub async fn list_lags(cluster: &KafkaCluster) -> Result<()> {
         }
     }).collect();
 
-    for group in groups {
-        let group_offsets = cluster.send_all(&offset_fetch::Request {
-            group_id: group.name.clone(),
-            topics: topics.clone()
-        }).await;
-        let group_offsets = group_offsets?.into_iter()
+    let (offsets, group_offsets) = try_join!(load_offsets(cluster, &metadata), load_group_offsets(cluster, &groups, &topics))?;
+
+    for (group, group_offsets) in groups.into_iter().zip(group_offsets) {
+        let group_offsets = group_offsets.into_iter()
             .find(|r| !r.responses.is_empty())
             .unwrap();
 
@@ -91,4 +88,16 @@ async fn list_offsets(conn: &KafkaConnection, metadata: &metadata::Response) -> 
         topics
     };
     conn.send(&req).await
+}
+
+async fn load_group_offsets(cluster: &KafkaCluster, groups: &Vec<list_groups::Group>, topics: &Vec<offset_fetch::TopicRequest>) -> Result<Vec<Vec<offset_fetch::Response>>> {
+    try_join_all(groups.iter()
+        .map(|g| load_one_group_offsets(cluster, g, topics))).await
+}
+
+async fn load_one_group_offsets(cluster: &KafkaCluster, group: &list_groups::Group, topics: &Vec<offset_fetch::TopicRequest>) -> Result<Vec<offset_fetch::Response>> {
+    cluster.send_all(&offset_fetch::Request {
+        group_id: group.name.clone(),
+        topics: topics.clone()
+    }).await
 }
