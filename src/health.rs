@@ -1,5 +1,7 @@
-use super::protocol::KafkaCluster;
-use super::protocol::messages::metadata;
+use crate::protocol::KafkaCluster;
+use crate::protocol::messages::metadata;
+use itertools::join;
+use std::collections::BTreeSet;
 use std::io::Result;
 use std::process::exit;
 
@@ -31,6 +33,15 @@ pub async fn cluster_health(cluster: &mut KafkaCluster) -> Result<()> {
         brokers_up_to_date = brokers_up_to_date && broker_up_to_date;
     }
 
+    let offline_brokers: BTreeSet<i32> = metadata.topic_metadata.iter()
+        .flat_map(|topic| topic.partition_metadata.iter())
+        .flat_map(|partition| partition.offline_replicas.iter().cloned())
+        .collect();
+
+    if !offline_brokers.is_empty() {
+        println!("ERR: The following brokers are offline: {}", join(&offline_brokers, ", "))
+    }
+
     let mut partitions_have_1_replica = true;
     let mut partitions_have_2_replicas = true;
 
@@ -53,6 +64,9 @@ pub async fn cluster_health(cluster: &mut KafkaCluster) -> Result<()> {
     } else if !partitions_have_2_replicas {
         println!("ERR: Some partitions are under-replicated");
         exit(2);
+    } else if !offline_brokers.is_empty() {
+        println!("ERR: Some brokers are offline");
+        exit(3);
     } else if !brokers_up_to_date {
         println!("WARN: Some brokers are still getting in sync");
         exit(3);
