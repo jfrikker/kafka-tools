@@ -162,7 +162,7 @@ impl KafkaCluster {
     }
 
     pub async fn send_any <R: KafkaRequest + Clone>(&self, request: &R) -> Result<R::Response> {
-        self.connections().next().unwrap().send(request).await
+        self.connections().next().expect("Unable to connect to any brokers").send(request).await
     }
 }
 

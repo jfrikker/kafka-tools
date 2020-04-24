@@ -61,9 +61,8 @@ async fn load_metadata(cluster: &KafkaCluster) -> Result<metadata::Response> {
 
 async fn load_groups(cluster: &KafkaCluster) -> Result<Vec<list_groups::Group>> {
     Ok(cluster.send_all(&list_groups::Request { }).await?.into_iter()
-        .find(|r| !r.groups.is_empty())
-        .map(|g| g.groups)
-        .unwrap_or_default())
+        .flat_map(|g| g.groups)
+        .collect())
 }
 
 async fn load_offsets(cluster: &KafkaCluster, metadata: &metadata::Response) -> Result<Vec<list_offsets::Response>> {
